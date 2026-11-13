@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#103e45"><title>斗地主 · 观战</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/ddz-shell.css"><link rel="stylesheet" href="/watch.css"></head>
+<body>
+<header class="gn-header"><b>♠ 斗地主 · 观战</b><a href="/">返回大厅</a></header>
+<main class="gn-canvas">
+  <section id="watchDirectory" class="surface-panel watch-directory"><h1>选择牌桌观战</h1><p class="gn-note">无需登录，不占座位。使用玩家视角，所有手牌始终隐藏。</p><form id="watchForm" class="gn-input-row"><label for="watchCode">房间号</label><input id="watchCode" maxlength="8" required autocomplete="off" placeholder="输入房间号"><button class="btn btn-accent">观战</button></form><div id="watchRooms" class="watch-rooms"></div></section>
+  <section id="roomPanel" hidden><div class="game-page-shell">
+    <header class="game-topbar"><a class="back-btn" href="/watch.html">← 退出观战</a><div class="room-id-badge" id="watchTitle"></div><div class="gn-table-tools"><label for="watchSeat" class="gn-sr">观战视角</label><select id="watchSeat" aria-label="观战视角"></select><button id="watchScoresBtn" class="btn btn-outline btn-sm">排行榜</button></div></header>
+    <section class="room-stage"><div id="watchWaiting" class="waiting-room"><section class="surface-panel waiting-main-panel"><div class="waiting-headline"><h2>等朋友入座</h2><p class="gn-note">观战中，等待三位玩家准备开局。</p></div><div id="waitingSlots" class="waiting-slots"></div></section></div><section class="surface-panel game-stage-panel" id="gameStage" hidden><div class="board-wrap stage-board"><div id="boardArea"></div></div></section></section>
+  </div></section>
+  <p id="watchStatus" class="gn-note" role="status" aria-live="polite">正在连接…</p>
+</main>
+<div id="watchScores" class="gn-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="watchScoresTitle"><div class="gn-dialog-card"><div class="gn-dialog-head"><h2 id="watchScoresTitle">本桌排行榜</h2><button id="watchCloseScores" class="btn btn-outline btn-sm">关闭</button></div><div id="watchScoresBody"></div></div></div>
+<div id="rotateDevice"><div><span>↻</span><h2>请横过手机，观看牌局</h2><p>横屏可完整显示三席和牌桌。</p></div></div>
+<script src="/js/style-utils.js"></script><script src="/js/lang/zh.js"></script><script src="/js/ui/motion.js"></script><script src="/js/ui/cards.js"></script><script src="/js/renderers/doudizhu.js"></script><script src="/js/watch.js"></script>
+</body></html>

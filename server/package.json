@@ -1,0 +1,49 @@
+{
+  "name": "gamenest-landlord",
+  "version": "2.3.0-landlord.4",
+  "description": "三人斗地主：持久牌桌、单会话身份、横屏触控与普通玩家 MCP",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": "desktop-entry.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node scripts/run-tests.js",
+    "check": "node scripts/check-syntax.js",
+    "build:desktop": "npx @yao-pkg/pkg . --out-path dist --targets node24-win-x64 --compress Brotli",
+    "test:monopoly": "node tests/monopoly.test.js",
+    "test:upstream": "node scripts/run-tests.js --upstream"
+  },
+  "pkg": {
+    "assets": [
+      "games/**/*",
+      "bots/**/*",
+      "public/**/*",
+      "lang/**/*",
+      "node_modules/**/*"
+    ],
+    "targets": [
+      "node24-win-x64"
+    ]
+  },
+  "keywords": [
+    "lan",
+    "multiplayer",
+    "board-games",
+    "websocket",
+    "party-games"
+  ],
+  "author": "GameNest",
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "dependencies": {
+    "compression": "^1.8.2",
+    "express": "^4.22.3",
+    "qrcode": "^1.5.4",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}

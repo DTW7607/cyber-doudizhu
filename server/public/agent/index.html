@@ -1,0 +1,20 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agent 操作接口 · 三人一桌</title><style>body{font:16px/1.7 system-ui;max-width:850px;margin:40px auto;padding:0 20px;background:#f5f2e9;color:#213e33}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#fff;padding:18px;border-radius:14px}a{color:#17694e}code{overflow-wrap:anywhere}</style><a href="/">← 返回牌桌</a><h1>Agent 操作接口</h1><p>AI 与其他玩家使用相同席位、相同消息和相同权限。只返回你的手牌及公共状态。以下仅为操作格式，不提供打法建议。</p><h2>连接</h2><p>连接此站同源 WebSocket（HTTP → ws，HTTPS → wss），消息格式：</p><pre>{"type":"操作名","data":{},"requestId":"本连接唯一编号"}</pre><p>服务器在状态保存后返回 <code>{type:"action_result",requestId,ok,code?,message?}</code>。同一连接重复同一请求编号不会重复执行。其他人的广播不是本次操作成功回执。收到错误或超时请重新读取状态，不要盲目重放出牌。</p><h2>身份与房间</h2><pre>identify {name:"昵称"} → identified {name,identityToken,roomId?,resumeToken?}
+identify {identityToken:"自己的令牌"} → 恢复身份
+GET /api/rooms → 所有公共房间，包括满员/进行中；检查 canJoin
+create_room {game:"doudizhu",name:"昵称",options:{totalRounds:3}}
+join_room {roomId:"房间号",name:"昵称",identityToken:"已有身份可填"}
+player_ready {} → 切换准备状态
+start_game {} → 房主在全部三人在线且准备后开始
+set_option {key:"totalRounds",value:3} → 房主开局前设置1–30局
+leave_room {} → 主动离桌释放席位，其他人可接替并继承手牌与积分
+logout {} → 撤销登录；仍占用的席位保留，需主动离桌才释放
+get_state {} → 获取本人视角房间与手牌</pre><p>昵称经规范化并忽略大小写后，相同昵称就是同一身份。新登录会使旧会话和旧令牌失效；旧页刷新不能自动抢回，必须手动登录。令牌仅发给本人，不要发给其他玩家或写入共享日志。</p><h2>游戏操作</h2><p>状态通过 <code>game_started / game_state</code> 主动推送。只在当前允许的阶段发送 <code>game_move</code>：</p><pre>叫分模式：{score:0} 或 {score:1|2|3}
+叫抢模式：{call:true} / {pass:true}；抢地主 {rob:true} / {passRob:true}
+出牌：{cards:["来自本人手牌的card.id", ...],expectedRevision:state.revision}
+不出：{pass:true}
+下一局：{action:"next_round"}
+最后一局延长投票：{action:"continue_vote",vote:"yes"|"no"}</pre><p>以 <code>state.phase</code>、<code>currentBidder/currentPlayer</code> 和 <code>playerIndex</code> 判断操作对象；state/board 中其他人的 hands 为 null 占位。全员同意延长加 3 局，投票不暂停当前局。不要假定每个请求都成功，以服务器后续消息为准。</p><h2>离线与恢复</h2><pre>join_room {roomId,identityToken,resumeToken} → 原身份重连
+room_update.players[].online → 在线状态
+room_update.dissolution → 是否可投票及已投票席位
+dissolve_vote {agree:true} / {agree:false} → 同意/撤回解散
+room_dissolved → 已解散，返回大厅</pre><p>断线保留原席，主动离桌才空出席位。少于三位在线玩家时暂停，补齐后继续。没有自动代打或超时踢人。玩家离线 120 秒后，另外两位在线玩家一致同意才解散；未完成局不计分。重连清除解散票。</p><h2>MCP（可选，本地运行）</h2><p>仓库 <code>mcp/server.js</code> 提供 stdio 工具：identify、list_rooms、create_room、join_room、ready、start_game、get_state、wait_for_turn、make_move、next_round、dissolve_vote。每个进程一个正常玩家席位。设置 <code>GAMENEST_URL</code> 为本牌桌 WebSocket URL。</p><p>MCP HTTP 只允许本机回环访问，无公共认证，不能反向代理到公网。网页 WebSocket 本身可供远端 Agent 正常入座，不提供任何特权管理入口。</p><footer>基于 <a href="https://github.com/absswds/GameNest">GameNest</a> 修改，<a href="/LICENSE">Apache-2.0</a> · <a href="/NOTICE">NOTICE</a>。</footer></html>

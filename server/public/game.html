@@ -1,0 +1,130 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>斗地主</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/ddz-shell.css"><style>
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.34); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .overlay-card { background: var(--surface); border-radius: var(--radius); padding: 32px 28px; text-align: center; max-width: 320px; width: 90%; }
+  .overlay-card .result { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+  .overlay-card .sub { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+  .seat-swap-backdrop { position: fixed; inset: 0; background: rgba(18, 16, 13, 0.34); display: none; align-items: center; justify-content: center; z-index: 55; padding: 18px; }
+  .seat-swap-card { width: min(460px, 100%); background: rgba(255,255,255,0.96); border: 1px solid rgba(0,0,0,0.06); border-radius: 24px; padding: 22px; box-shadow: 0 20px 50px rgba(24, 21, 17, 0.16); display: grid; gap: 14px; }
+  .seat-swap-head { display: grid; gap: 6px; }
+  .seat-swap-head strong { font-size: 20px; }
+  .seat-swap-head span { color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+  .seat-swap-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .seat-swap-option { border: 1px solid rgba(0,0,0,0.08); background: #fff; border-radius: 18px; padding: 12px; display: grid; gap: 8px; text-align: left; cursor: pointer; }
+  .seat-swap-option.current { border-color: rgba(200,164,92,0.45); background: #faf6ef; }
+  .seat-swap-option:disabled { opacity: 0.45; cursor: default; }
+  .seat-swap-slot { font-size: 12px; color: var(--text-muted); }
+  .seat-swap-player { font-size: 15px; font-weight: 700; }
+  .seat-swap-tags { font-size: 12px; color: #6a6257; }
+  .seat-swap-close { justify-self: end; }
+</style></head><body><header class="gn-header"><div><b>斗地主</b></div><a href="/agent">Agent 接入 ↗</a></header><main id="singleCanvas" class="gn-canvas"><section id="identityPanel" class="surface-panel gn-identity"><div class="eyebrow">免注册 · 浏览器保留身份</div><h1>取个昵称，即可入座。</h1><form id="identityForm"><label for="identityName">昵称（1–16 字）</label><div class="gn-input-row"><input id="identityName" maxlength="16" required autocomplete="nickname" placeholder="怎么称呼你？"><button class="btn btn-accent" id="identitySubmit">进入大厅</button></div><p id="identityError" class="gn-error" role="alert"></p></form><p class="gn-note">昵称必须唯一，不能用同名登录旧身份。此浏览器自动保存身份；重连请保留浏览器数据。</p></section><section id="hallPanel" hidden><div class="gn-hall-top"><div><div class="eyebrow"></div><h1>创建或加入牌桌</h1><p id="profileLabel"></p></div><button id="renameBtn" class="btn btn-outline btn-sm">修改昵称</button></div><section class="surface-panel gn-opening"><div class="gn-empty-seats"><span>等待朋友</span><span>你的座位</span><span>等待朋友</span></div><div class="gn-opening-center"><h2>新建牌桌</h2><form id="createForm" class="gn-input-row"><label for="roundCount">局数</label><input id="roundCount" type="number" min="1" max="30" value="3" step="1" required><button class="btn btn-accent" id="createBtn">＋ 创建房间</button></form><p class="gn-note">默认 3 局，可设 1–30 局。最后一局三人同意可加 3 局。</p></div></section><div class="gn-directory-head"><h2>所有牌桌</h2><form id="joinForm" class="gn-input-row"><label for="joinCode" class="gn-sr">房间号</label><input id="joinCode" placeholder="输入房间号" maxlength="12" required><button class="btn btn-outline" id="joinBtn">加入</button></form></div><div id="roomsList" class="gn-room-list"></div></section><section id="roomPanel" hidden>
+  <div id="notifyBar" style="position:fixed;top:0;left:0;right:0;background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:14px 20px;text-align:center;font-size:15px;font-weight:600;z-index:60;transform:translateY(-100%);transition:transform .3s ease;box-shadow:0 2px 12px rgba(0,0,0,.08);"></div>
+
+  <div class="game-page-shell">
+    <header class="game-topbar">
+      <div class="game-topbar-main">
+        <button type="button" class="back-btn" onclick="window.doLeaveRoom && window.doLeaveRoom()">返回大厅</button>
+        <div class="game-title-stack">
+          <strong id="activeGameName">房间</strong>
+          <span id="activeGameSubtitle">等待玩家加入</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button type="button" class="mute-btn" id="muteBtn">🔊</button>
+        <div class="room-id-badge" id="roomBadge">----</div>
+      </div>
+    </header>
+
+    <section class="room-stage">
+      <div id="waitingRoom" class="waiting-room refresh" style="display:none">
+        <div class="waiting-layout">
+          <section class="surface-panel waiting-main-panel">
+            <div class="waiting-headline">
+              <div class="waiting-headline-copy">
+                <p class="eyebrow"></p>
+                <h2 id="waitingGameName">游戏房间</h2>
+                <p id="waitingGameSubtitle">等待房主安排座位并准备开始。</p>
+              </div>
+              <div class="waiting-meta-row" id="waitingMeta"></div>
+            </div>
+
+            <div class="waiting-profile" id="profileEdit">
+              <span id="avatarDisplay" onclick="window.openAvatarDrawer&&window.openAvatarDrawer()" style="font-size:32px;width:54px;height:54px;display:flex;align-items:center;justify-content:center;background:var(--bg);border-radius:50%;border:2px solid var(--border);transition:border-color .2s;cursor:pointer;position:relative;">
+                <span id="avatarEmoji">🙂</span>
+                <span style="position:absolute;bottom:-2px;right:-2px;font-size:11px;background:var(--accent);color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface);">✎</span>
+              </span>
+              <input id="nameInput" style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:14px;font-weight:600;max-width:220px;transition:border-color .2s,box-shadow .2s;outline:none;" maxlength="16" placeholder="你的名字" onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(200,164,92,0.25)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+            </div>
+
+            <div id="avatarDrawer" class="avatar-drawer-backdrop" style="display:none" onclick="if(event.target===this)window.closeAvatarDrawer()">
+              <div class="avatar-drawer-sheet">
+                <div class="avatar-drawer-handle"></div>
+                <div class="avatar-drawer-title">选择头像</div>
+                <div id="emojiRow" class="emoji-grid"></div>
+              </div>
+            </div>
+
+            <div class="waiting-slots" id="waitingSlots"></div>
+            <div id="gameOptions" style="display:none;background:var(--bg);border-radius:14px;padding:12px;"></div>
+            <div class="waiting-actions">
+              <button class="btn btn-outline btn-sm" id="readyBtn">准备</button>
+              <button class="btn btn-outline btn-sm" id="addBotBtn" style="display:none">添加 AI</button>
+              <button class="btn btn-accent btn-sm" id="startGameBtn" style="display:none">开始游戏</button>
+            </div>
+            <div class="waiting-status" id="waitingStatus">等待所有玩家准备...</div>
+          </section>
+
+          <aside class="surface-panel waiting-side-panel">
+            <button class="btn btn-outline btn-sm rules-btn" id="tutorialBtn" onclick="var g=(window._effectiveGameKey?window._effectiveGameKey():null)||sessionStorage.getItem('game');if(typeof showGameTutorial==='function')showGameTutorial(g);">查看规则</button>
+            <div class="qr-card" id="qrArea">
+              <img id="qrImage" src="" alt="QR">
+              <div class="qr-room-code" id="qrRoomCode"></div>
+              <div class="qr-hint">扫码或输入房间号加入</div>
+              <button class="btn btn-outline btn-sm" id="shareLinkBtn" type="button">分享链接</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <section class="surface-panel game-stage-panel" id="gameStage" style="display:none">
+        <div class="game-stage-header">
+          <div class="game-title-stack">
+            <strong id="stageGameName">游戏中</strong>
+            <span id="stageRoomFacts">等待同步状态</span>
+          </div>
+          <div class="room-facts" id="stageMeta"></div>
+        </div>
+        <div class="player-bar" id="playerBar" style="display:none"></div>
+        <div class="stage-info" id="stageInfo" style="display:none"></div>
+        <div class="game-status" id="status" style="display:none">等待玩家加入...</div>
+        <div class="board-wrap stage-board"><div id="boardArea"></div></div>
+        <div class="game-actions-fixed refresh" id="gameActions" style="display:none">
+          <span class="gn-note">本桌积分连续累计，最后一局可一致同意延长。</span>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <div class="overlay" id="overlay" style="display:none">
+    <div class="overlay-card">
+      <div class="result" id="resultText"></div>
+      <div class="sub" id="resultSub"></div>
+      <button class="btn btn-accent" onclick="window.doRestart()">再来一局</button>
+      <button class="btn btn-outline btn-sm" onclick="window.closeResult()" style="margin-top:10px;" id="resultViewBoard">查看棋局</button>
+      <button class="btn btn-outline btn-sm" onclick="window.doReturnToRoom()" style="margin-top:10px;">返回房间</button>
+      <button class="btn btn-outline btn-sm" onclick="window.doLeaveRoom()" style="margin-top:10px;">返回大厅</button>
+    </div>
+  </div>
+
+  <div class="seat-swap-backdrop" id="seatSwapModal" onclick="if(event.target===this)window.closeSeatSwapModal&&window.closeSeatSwapModal()">
+    <div class="seat-swap-card">
+      <div class="seat-swap-head">
+        <strong>换座位</strong>
+        <span id="seatSwapHint">选择你想换去的位置。</span>
+      </div>
+      <div class="seat-swap-grid" id="seatSwapGrid"></div>
+      <button class="btn btn-outline btn-sm seat-swap-close" onclick="window.closeSeatSwapModal&&window.closeSeatSwapModal()">取消</button>
+    </div>
+  </div>
+
+</section><section id="presencePanel" class="surface-panel gn-presence" hidden></section><p id="persistentStatus" class="gn-note" role="status"></p><footer class="gn-footer">基于 <a href="https://github.com/absswds/GameNest" target="_blank" rel="noopener">GameNest</a> 修改，Apache-2.0 · <a href="/NOTICE">项目归属</a></footer></main><div id="shellToast" role="alert" hidden></div>
+<script src="/js/session-store.js"></script><script src="/js/style-utils.js"></script><script src="/js/lang/zh.js"></script><script src="/js/lang/en.js"></script><script src="/js/lang/catalog-zh.js"></script><script src="/js/lang/catalog-en.js"></script><script src="/js/game-catalog.js"></script><script src="/js/tutorials.js"></script><script src="/js/ui/motion.js"></script><script src="/js/ui/cards.js"></script><script src="/js/renderers/doudizhu.js"></script><script src="/js/room-client.js"></script><script src="/js/ddz-shell.js"></script></body></html>

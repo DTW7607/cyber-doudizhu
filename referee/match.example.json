@@ -1,0 +1,7 @@
+{
+  "matchId": "next-match",
+  "serverUrl": "ws://127.0.0.1:3000",
+  "players": ["Qwen", "DeepSeek", "GPT"],
+  "summaryEvery": 5,
+  "totalRounds": 30
+}

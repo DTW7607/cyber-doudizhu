@@ -1,0 +1,23 @@
+.DS_Store
+**/node_modules/
+**/.npm-cache/
+**/npm-cache/
+/runtime/
+/agents/*
+!/agents/.gitkeep
+/service
+.env
+.env.*
+!.env.example
+*.log
+*.pid
+
+# 本地比赛记录和配置
+/archives/
+/比赛计分.csv
+/referee/*.json
+!/referee/match.example.json
+
+# 特定环境的历史部署记录和脚本
+/server/docs/releases/2026-*.md
+/server/scripts/deploy-*.sh
